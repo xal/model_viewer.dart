@@ -6,9 +6,10 @@ import 'dart:io'
     show File, HttpRequest, HttpServer, HttpStatus, InternetAddress, Platform;
 import 'dart:typed_data' show Uint8List;
 
+import 'package:android_intent/android_intent.dart';
+import 'package:android_intent/flag.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
-import 'package:flutter_android/android_content.dart' as android_content;
 import 'package:webview_flutter/platform_interface.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -138,19 +139,13 @@ class _ModelViewerState extends State<ModelViewer> {
           return NavigationDecision.navigate;
         }
         try {
-          // See: https://developers.google.com/ar/develop/java/scene-viewer
-          final intent = android_content.Intent(
+          var intent = AndroidIntent(
             action: "android.intent.action.VIEW", // Intent.ACTION_VIEW
-            data: Uri.parse("https://arvr.google.com/scene-viewer/1.0").replace(
-              queryParameters: <String, dynamic>{
-                'file': widget.src,
-                'mode': 'ar_only',
-              },
-            ),
+            data: Uri.parse("https://arvr.google.com/scene-viewer/1.0").replace(queryParameters: <String, dynamic>{'file': widget.src,'mode': 'ar_only'}).toString(),
             package: "com.google.ar.core",
-            flags: 0x10000000, // Intent.FLAG_ACTIVITY_NEW_TASK,
+            flags: <int>[Flag.FLAG_ACTIVITY_NEW_TASK]
           );
-          await intent.startActivity();
+          await intent.launch();
         } catch (error) {
           print('>>>> ModelViewer failed to launch AR: $error'); // DEBUG
         }
