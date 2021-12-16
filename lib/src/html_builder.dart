@@ -30,7 +30,7 @@ abstract class HTMLBuilder {
     }
     // TODO: animation-name
     // TODO: animation-crossfade-duration
-    if (ar ?? false) {
+    if (ar) {
       html.write(' ar');
     }
     if (arModes != null) {
@@ -39,17 +39,17 @@ abstract class HTMLBuilder {
     if (arScale != null) {
       html.write(' ar-scale="${htmlEscape.convert(arScale)}"');
     }
-    if (autoRotate ?? false) {
+    if (autoRotate) {
       html.write(' auto-rotate');
     }
     if (autoRotateDelay != null) {
       html.write(' auto-rotate-delay="$autoRotateDelay"');
     }
-    if (autoPlay ?? false) {
+    if (autoPlay) {
       html.write(' autoplay');
     }
     // TODO: skybox-image
-    if (cameraControls ?? false) {
+    if (cameraControls) {
       html.write(' camera-controls');
     }
     // TODO: camera-orbit
