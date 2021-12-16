@@ -17,17 +17,17 @@ import 'html_builder.dart';
 /// Flutter widget for rendering interactive 3D models.
 class ModelViewer extends StatefulWidget {
   ModelViewer(
-      {Key key,
+      {Key? key,
       this.backgroundColor = Colors.white,
-      @required this.src,
+      required this.src,
       this.alt,
-      this.ar,
+      this.ar = false,
       this.arModes,
       this.arScale,
-      this.autoRotate,
-      this.autoRotateDelay,
-      this.autoPlay,
-      this.cameraControls,
+      this.autoRotate = false,
+      this.autoRotateDelay = 5,
+      this.autoPlay = false,
+      this.cameraControls = true,
       this.iosSrc})
       : super(key: key);
 
@@ -53,18 +53,18 @@ class ModelViewer extends StatefulWidget {
   /// Configures the model with custom text that will be used to describe the
   /// model to viewers who use a screen reader or otherwise depend on additional
   /// semantic context to understand what they are viewing.
-  final String alt;
+  final String? alt;
 
   /// Enable the ability to launch AR experiences on supported devices.
   final bool ar;
 
   /// A prioritized list of the types of AR experiences to enable, if available.
-  final List<String> arModes;
+  final List<String>? arModes;
 
   /// Controls the scaling behavior in AR mode in Scene Viewer. Set to "fixed"
   /// to disable scaling of the model, which sets it to always be at 100% scale.
   /// Defaults to "auto" which allows the model to be resized.
-  final String arScale;
+  final String? arScale;
 
   /// Enables the auto-rotation of the model.
   final bool autoRotate;
@@ -83,7 +83,7 @@ class ModelViewer extends StatefulWidget {
 
   /// The URL to a USDZ model which will be used on supported iOS 12+ devices
   /// via AR Quick Look.
-  final String iosSrc;
+  final String? iosSrc;
 
   @override
   State<ModelViewer> createState() => _ModelViewerState();
@@ -93,7 +93,7 @@ class _ModelViewerState extends State<ModelViewer> {
   final Completer<WebViewController> _controller =
       Completer<WebViewController>();
 
-  HttpServer _proxy;
+  late HttpServer _proxy;
 
   @override
   void initState() {
@@ -106,7 +106,6 @@ class _ModelViewerState extends State<ModelViewer> {
     super.dispose();
     if (_proxy != null) {
       _proxy.close(force: true);
-      _proxy = null;
     }
   }
 
