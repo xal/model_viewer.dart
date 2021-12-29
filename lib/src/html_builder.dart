@@ -25,7 +25,7 @@ abstract class HTMLBuilder {
     html.write('<model-viewer');
     html.write(' src="${_htmlEscapeConvert(src)}"');
     html.write(
-        ' style="background-color: rgb(${backgroundColor.red}, ${backgroundColor.green}, ${backgroundColor.blue});"');
+        ' style="width:100%; height:100%; background-color: rgb(${backgroundColor.red}, ${backgroundColor.green}, ${backgroundColor.blue});"');
     if (alt != null) {
       html.write(' alt="${_htmlEscapeConvert(alt)}"');
     }
