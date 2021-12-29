@@ -3,6 +3,7 @@
 import 'dart:convert' show htmlEscape;
 
 import 'package:flutter/material.dart';
+import 'package:universal_platform/universal_platform.dart';
 
 abstract class HTMLBuilder {
   HTMLBuilder._();
@@ -22,11 +23,11 @@ abstract class HTMLBuilder {
       final String? iosSrc}) {
     final html = StringBuffer(htmlTemplate);
     html.write('<model-viewer');
-    html.write(' src="${htmlEscape.convert(src)}"');
+    html.write(' src="${_htmlEscapeConvert(src)}"');
     html.write(
         ' style="background-color: rgb(${backgroundColor.red}, ${backgroundColor.green}, ${backgroundColor.blue});"');
     if (alt != null) {
-      html.write(' alt="${htmlEscape.convert(alt)}"');
+      html.write(' alt="${_htmlEscapeConvert(alt)}"');
     }
     // TODO: animation-name
     // TODO: animation-crossfade-duration
@@ -34,10 +35,10 @@ abstract class HTMLBuilder {
       html.write(' ar');
     }
     if (arModes != null) {
-      html.write(' ar-modes="${htmlEscape.convert(arModes.join(' '))}"');
+      html.write(' ar-modes="${_htmlEscapeConvert(arModes.join(' '))}"');
     }
     if (arScale != null) {
-      html.write(' ar-scale="${htmlEscape.convert(arScale)}"');
+      html.write(' ar-scale="${_htmlEscapeConvert(arScale)}"');
     }
     if (autoRotate) {
       html.write(' auto-rotate');
@@ -62,7 +63,7 @@ abstract class HTMLBuilder {
     // TODO: interaction-prompt-style
     // TODO: interaction-prompt-threshold
     if (iosSrc != null) {
-      html.write(' ios-src="${htmlEscape.convert(iosSrc)}"');
+      html.write(' ios-src="${_htmlEscapeConvert(iosSrc)}"');
     }
     // TODO: max-camera-orbit
     // TODO: max-field-of-view
@@ -76,5 +77,13 @@ abstract class HTMLBuilder {
     // TODO: shadow-softness
     html.writeln('></model-viewer>');
     return html.toString();
+  }
+
+  static String _htmlEscapeConvert(String src) {
+    if (UniversalPlatform.isWeb) {
+      return src;
+    } else {
+      return htmlEscape.convert(src);
+    }
   }
 }

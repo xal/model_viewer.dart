@@ -10,10 +10,18 @@ import 'package:android_intent/android_intent.dart';
 import 'package:android_intent/flag.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:model_viewer/src/web_view_init_stub.dart'
+    if (dart.library.io) 'package:model_viewer/src/web_view_init_mobile.dart'
+    if (dart.library.js) 'package:model_viewer/src/web_view_init_web.dart';
+import 'package:universal_platform/universal_platform.dart';
 import 'package:webview_flutter/platform_interface.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import 'html_builder.dart';
+
+const _webImportScript = '''
+<script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+''';
 
 /// Flutter widget for rendering interactive 3D models.
 class ModelViewer extends StatefulWidget {
@@ -94,7 +102,7 @@ class _ModelViewerState extends State<ModelViewer> {
   final Completer<WebViewController> _controller =
       Completer<WebViewController>();
 
-  late HttpServer _proxy;
+  late HttpServer? _proxy;
 
   @override
   void initState() {
@@ -106,7 +114,7 @@ class _ModelViewerState extends State<ModelViewer> {
   void dispose() {
     super.dispose();
     if (_proxy != null) {
-      _proxy.close(force: true);
+      _proxy?.close(force: true);
     }
   }
 
@@ -118,17 +126,31 @@ class _ModelViewerState extends State<ModelViewer> {
 
   @override
   Widget build(final BuildContext context) {
+    // required while web support is in preview
+    initWebView();
+
     return WebView(
       initialUrl: null,
       javascriptMode: JavascriptMode.unrestricted,
       initialMediaPlaybackPolicy: AutoMediaPlaybackPolicy.always_allow,
       onWebViewCreated: (final WebViewController webViewController) async {
         _controller.complete(webViewController);
-        final host = _proxy.address.address;
-        final port = _proxy.port;
-        final url = "http://$host:$port/";
-        print('>>>> ModelViewer initializing... <$url>'); // DEBUG
-        await webViewController.loadUrl(url);
+        if (UniversalPlatform.isWeb) {
+          var srcHtml = HTMLBuilder.build(src: widget.src);
+          var html = '''
+          $_webImportScript
+          $srcHtml
+          ''';
+          await webViewController.loadHtmlString(
+            html,
+          );
+        } else {
+          final host = _proxy?.address.address;
+          final port = _proxy?.port;
+          final url = "http://$host:$port/";
+          print('>>>> ModelViewer initializing... <$url>'); // DEBUG
+          await webViewController.loadUrl(url);
+        }
       },
       navigationDelegate: (final NavigationRequest navigation) async {
         //print('>>>> ModelViewer wants to load: <${navigation.url}>'); // DEBUG
@@ -140,11 +162,14 @@ class _ModelViewerState extends State<ModelViewer> {
         }
         try {
           var intent = AndroidIntent(
-            action: "android.intent.action.VIEW", // Intent.ACTION_VIEW
-            data: Uri.parse("https://arvr.google.com/scene-viewer/1.0").replace(queryParameters: <String, dynamic>{'file': widget.src,'mode': 'ar_only'}).toString(),
-            package: "com.google.ar.core",
-            flags: <int>[Flag.FLAG_ACTIVITY_NEW_TASK]
-          );
+              action: "android.intent.action.VIEW", // Intent.ACTION_VIEW
+              data: Uri.parse("https://arvr.google.com/scene-viewer/1.0")
+                  .replace(queryParameters: <String, dynamic>{
+                'file': widget.src,
+                'mode': 'ar_only'
+              }).toString(),
+              package: "com.google.ar.core",
+              flags: <int>[Flag.FLAG_ACTIVITY_NEW_TASK]);
           await intent.launch();
         } catch (error) {
           print('>>>> ModelViewer failed to launch AR: $error'); // DEBUG
@@ -182,68 +207,70 @@ class _ModelViewerState extends State<ModelViewer> {
   }
 
   Future<void> _initProxy() async {
-    final url = Uri.parse(widget.src);
-    _proxy = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
-    _proxy.listen((final HttpRequest request) async {
-      //print("${request.method} ${request.uri}"); // DEBUG
-      //print(request.headers); // DEBUG
-      final response = request.response;
+    if (!UniversalPlatform.isWeb) {
+      final url = Uri.parse(widget.src);
+      _proxy = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      _proxy?.listen((final HttpRequest request) async {
+        //print("${request.method} ${request.uri}"); // DEBUG
+        //print(request.headers); // DEBUG
+        final response = request.response;
 
-      switch (request.uri.path) {
-        case '/':
-        case '/index.html':
-          final htmlTemplate = await rootBundle
-              .loadString('packages/model_viewer/etc/assets/template.html');
-          final html = utf8.encode(_buildHTML(htmlTemplate));
-          response
-            ..statusCode = HttpStatus.ok
-            ..headers.add("Content-Type", "text/html;charset=UTF-8")
-            ..headers.add("Content-Length", html.length.toString())
-            ..add(html);
-          await response.close();
-          break;
-
-        case '/model-viewer.js':
-          final code = await _readAsset(
-              'packages/model_viewer/etc/assets/model-viewer.js');
-          response
-            ..statusCode = HttpStatus.ok
-            ..headers
-                .add("Content-Type", "application/javascript;charset=UTF-8")
-            ..headers.add("Content-Length", code.lengthInBytes.toString())
-            ..add(code);
-          await response.close();
-          break;
-
-        case '/model':
-          if (url.isAbsolute && !url.isScheme("file")) {
-            await response.redirect(url); // TODO: proxy the resource
-          } else {
-            final data = await (url.isScheme("file")
-                ? _readFile(url.path)
-                : _readAsset(url.path));
+        switch (request.uri.path) {
+          case '/':
+          case '/index.html':
+            final htmlTemplate = await rootBundle
+                .loadString('packages/model_viewer/etc/assets/template.html');
+            final html = utf8.encode(_buildHTML(htmlTemplate));
             response
               ..statusCode = HttpStatus.ok
-              ..headers.add("Content-Type", "application/octet-stream")
-              ..headers.add("Content-Length", data.lengthInBytes.toString())
-              ..headers.add("Access-Control-Allow-Origin", "*")
-              ..add(data);
+              ..headers.add("Content-Type", "text/html;charset=UTF-8")
+              ..headers.add("Content-Length", html.length.toString())
+              ..add(html);
             await response.close();
-          }
-          break;
+            break;
 
-        case '/favicon.ico':
-        default:
-          final text = utf8.encode("Resource '${request.uri}' not found");
-          response
-            ..statusCode = HttpStatus.notFound
-            ..headers.add("Content-Type", "text/plain;charset=UTF-8")
-            ..headers.add("Content-Length", text.length.toString())
-            ..add(text);
-          await response.close();
-          break;
-      }
-    });
+          case '/model-viewer.js':
+            final code = await _readAsset(
+                'packages/model_viewer/etc/assets/model-viewer.js');
+            response
+              ..statusCode = HttpStatus.ok
+              ..headers
+                  .add("Content-Type", "application/javascript;charset=UTF-8")
+              ..headers.add("Content-Length", code.lengthInBytes.toString())
+              ..add(code);
+            await response.close();
+            break;
+
+          case '/model':
+            if (url.isAbsolute && !url.isScheme("file")) {
+              await response.redirect(url); // TODO: proxy the resource
+            } else {
+              final data = await (url.isScheme("file")
+                  ? _readFile(url.path)
+                  : _readAsset(url.path));
+              response
+                ..statusCode = HttpStatus.ok
+                ..headers.add("Content-Type", "application/octet-stream")
+                ..headers.add("Content-Length", data.lengthInBytes.toString())
+                ..headers.add("Access-Control-Allow-Origin", "*")
+                ..add(data);
+              await response.close();
+            }
+            break;
+
+          case '/favicon.ico':
+          default:
+            final text = utf8.encode("Resource '${request.uri}' not found");
+            response
+              ..statusCode = HttpStatus.notFound
+              ..headers.add("Content-Type", "text/plain;charset=UTF-8")
+              ..headers.add("Content-Length", text.length.toString())
+              ..add(text);
+            await response.close();
+            break;
+        }
+      });
+    }
   }
 
   Future<Uint8List> _readAsset(final String key) async {
