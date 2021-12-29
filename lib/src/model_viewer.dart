@@ -136,7 +136,19 @@ class _ModelViewerState extends State<ModelViewer> {
       onWebViewCreated: (final WebViewController webViewController) async {
         _controller.complete(webViewController);
         if (UniversalPlatform.isWeb) {
-          var srcHtml = HTMLBuilder.build(src: widget.src);
+          var srcHtml = HTMLBuilder.build(
+            src: widget.src,
+            backgroundColor: widget.backgroundColor,
+            alt: widget.alt,
+            ar: widget.ar,
+            arModes: widget.arModes,
+            arScale: widget.arScale,
+            autoRotate: widget.autoRotate,
+            autoRotateDelay: widget.autoRotateDelay,
+            autoPlay: widget.autoPlay,
+            cameraControls: widget.cameraControls,
+            iosSrc: widget.iosSrc,
+          );
           var html = '''
           $_webImportScript
           $srcHtml
